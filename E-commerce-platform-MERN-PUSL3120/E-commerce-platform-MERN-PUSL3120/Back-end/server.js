@@ -1,0 +1,157 @@
+import { Server } from "socket.io";
+import http from "http";
+import express from "express";
+import multer from "multer";
+import cors from "cors";
+import { connectDB } from "./config/db.js";
+import ECommerceRouter from "./routes/Product_add_routes.js";
+import SellerAuthenticationRouter from "./routes/Seller_authentication_routes.js";
+import CustomerAuthenticationRouter from "./routes/Customer_authentication_routes.js";
+import AdmincontactRouter from "./routes/Admin_contact_routes.js";
+import WishlistRouter from "./routes/Wish_list_routes.js";
+import ProductDisplayRouter from "./routes/Seller_all_products_routes.js";
+import Delete from "./routes/Seller_product_de_ed_routes.js";
+import Update from "./routes/Product_edit_routes.js";
+import Display from "./routes/Home_product_display_routes.js";
+import PendingCartRouter from "./routes/Pending_cart_routes.js";
+import Productdetails from "./routes/Product_details_routes.js";
+import AskQuestionsRouter from "./routes/Ask_questions_routes.js";
+import Questions from "./routes/Show_questions_routes.js";
+import DisplayMen from "./routes/Men_product_display_routes.js";
+import DisplayWomen from "./routes/Women_product_display_routes.js";
+import DisplayHot from "./routes/Hot_product_display_routes.js";
+import DisplayOffer from "./routes/Offer_product_display_routes.js";
+import WishlistDisplay from "./routes/Wish_list_display_routes.js";
+import AskQuestionReply from "./routes/Ask_questions_reply_route.js";
+import Search from "./routes/Search_routes.js";
+import OrderRouter from "./routes/Order_routes.js";
+import Ordernew from "./routes/Seller_new_order_routes.js";
+import Delivered from "./routes/Seller_delivered_order_routes.js";
+import Sellerdetails from "./routes/Seller_account_routes.js";
+import Customerdetails from "./routes/Customer_account_routes.js";
+import Reply from "./routes/Show_reply_routes.js";
+import Orderscustomer from "./routes/Customer_order_routes.js";
+import router from "./routes/Customer_reply_delete_routes.js";
+import PrivateRoute from "./routes/Admin_Login_Private.js";
+import gmailController from "./models/gmailController.js";
+const app = express();
+const port = 3000;
+
+// Create HTTP server for WebSocket
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for development
+  },
+});
+
+app.use(express.json());
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static("uploads"));
+
+// Connection to MongoDB
+connectDB();
+
+// API Endpoints
+//Product add
+app.use("/api/ecommerceproduct", ECommerceRouter);
+//Product update
+app.use("/api/ecommerceproductedit", Update);
+//Seller authentication
+app.use("/api/sellerauthentication", SellerAuthenticationRouter);
+//Customer authentication
+app.use("/api/customerauthentication", CustomerAuthenticationRouter);
+//Admin contact
+app.use("/api/admincontact", AdmincontactRouter);
+//Wish list
+app.use("/api/wishlist", WishlistRouter);
+// Product seller display
+app.use("/api/productssellerdisplay", ProductDisplayRouter);
+// Order new seller display
+app.use("/api/ordernewsellerdisplay", Ordernew);
+// Order new seller display
+app.use("/api/orderdeliveredsellerdisplay", Delivered);
+// Product delete
+app.use("/api/productsdelete", Delete);
+// Product display
+app.use("/api/productsdisplay", Display);
+// Product men display
+app.use("/api/productsdisplaymen", DisplayMen);
+// Product women display
+app.use("/api/productsdisplaywomen", DisplayWomen);
+// Product hot display
+app.use("/api/productsdisplayhot", DisplayHot);
+// Product offer display
+app.use("/api/productsdisplayoffers", DisplayOffer);
+// Product add cart
+app.use("/api/pendingcart", PendingCartRouter);
+// Product details display
+app.use("/api/productsdetailsdisplay", Productdetails);
+// Product ask questions
+app.use("/api/productsaskquestions", AskQuestionsRouter);
+// Product show questions
+app.use("/api/productsshowquestions", Questions);
+// Product reply questions
+app.use("/api/productsreplyquestions", AskQuestionReply);
+// Wishlist display
+app.use("/api/wishlistdisplay", WishlistDisplay);
+// Search funtion
+app.use("/api/productssearch", Search);
+// Attach the router to your app
+app.use("/api/sellers", SellerAuthenticationRouter);
+app.use("/api/orders", OrderRouter);
+// Seller account details
+app.use("/api/selleraccount", Sellerdetails);
+// Customer account details
+app.use("/api/customeraccount", Customerdetails);
+// Customer reply questions
+app.use("/api/customerreply", Reply);
+// Customer orders
+app.use("/api/customerorder", Orderscustomer);
+// customer reply delete
+app.use("/api/customerdeletereply", router);
+
+app.use("/api/orders", OrderRouter);
+app.use('/api/admin', PrivateRoute);
+app.use('/api/email', PrivateRoute);
+app.use("/api/email", gmailController);
+
+app.get("/", (req, res) => {
+  res.send("Good to go");
+});
+
+// WebSocket connection logic
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  // Handle real-time updates for replies to customer questions
+  socket.on("new-reply", (reply) => {
+    console.log("New reply received:", reply);
+    io.emit("update-replies", reply);
+  });
+
+  // Handle new questions
+  socket.on("new-question", (question) => {
+    console.log("New question received:", question);
+    io.emit("update-questions", question);
+  });
+
+  socket.on("new-message", (message) => {
+    console.log("New message received:", message);
+    io.emit("broadcast-message", message);
+  });
+  // Listen for order updates
+  
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+// Start the server
+server.listen(port, () => {
+  console.log(`Server Started on http://localhost:${port}`);
+});
+
+export { io };
